@@ -29,7 +29,7 @@ class Pixiv():
         self.password = ''
         self.post_key = []
         self.return_to = 'https://www.pixiv.net'
-        self.load_path = 'D:\Pixiv_mark'
+        self.path = 'D:\Pixiv_mark'
 
     #登录模块
     def login(self):
@@ -78,13 +78,66 @@ class Pixiv():
         return Total
 
     #获取图片主页的信息
-    def get_pic_info(self,url,flag):
+    def get_Img_info(self,url,flag):
         if flag :
             return 0
         else:
+            Img_html = self.get_html()
+            Img_soup = BeautifulSoup(Img_html,'lxml')
+            Pattern = re.compile('https://www.pixiv.net/member_illust.php?mode=medium&illust_id=(.*?)',re.S)
+            Img_id = re.search(pattern=Pattern, string=url).group(1)
+
+            Img_info = Img_soup.find('div',attrs={'id':'wrapper'}).find('div',attrs={'class':'wrapper'})
+            flag = self.download_Img(Img_info,url,Img_id)
+            if not flag:
+                print u'该图片已存在'
+                return 2
+            else:
+                return 1
 
 
+    def download_Img(self,Img_info,Img_id,href):
+        try:
+            title = Img_info.find('img')['alt']
+            print title
+            src = Img_info.find('img')['data-src']
+            src_headers = self.headers
+            src_headers['Referer'] = href
+        except:
+            print u'图片地址获取失败'
+            return False
+        try:
+            html = requests.get(src,header=src_headers)
+            Img_data = html.content
+        except:
+            print u'图片获取失败'
+            return False
+        title = title.replace('?', '_').replace('/', '_').replace('\\', '_').replace('*', '_').replace('|', '_') \
+            .replace('>', '_').replace('<', '_').replace(':', '_').replace('"', '_').strip()
+        title = title + str(Img_id) +'.jpg'
+        is_exists = os.path.exists(path=self.path + '/' + title)
+        if not is_exists :
+            with open(title,'ab') as f:
+                f.write(Img_data)
+            print u'图片保存成功'
+            return 1
+        if is_exists:
+            return 0
+        
 
+
+    def mkdir(self):
+        self.path = self.path.strip()
+        is_exist = os.path.exists(path=self.path)
+        if not is_exist:
+            print u'创建一个名字为 ' + path + ' 的文件夹'
+            os.makedirs(self.path)
+            os.chdir(self.path)
+            return False
+        else:
+            print u'名字为 ' + path + ' 的文件夹已经存在'
+            os.chdir(self.path)
+            return False
 
 
     def work(self):
@@ -92,11 +145,15 @@ class Pixiv():
         Mark_Total = self.get_total(self)
         Mark_page_num = int(Mark_Total)/20
         #求出收藏页数
+        self.mkdir(self.path)
 
         for page_num in Mark_page_num:
             Elements = self.get_html(self,self.mark_url)
-            for Pic_url,flag  in Elements.items():
-                Pic_info = self.get_pic_info(Pic_url,flag)
+            for Img_url,flag  in Elements.items():
+                flag = self.get_Img_info(Img_url,flag)
+                if flag == 2:
+                    break
+                    break
 
 
 
