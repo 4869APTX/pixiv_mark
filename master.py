@@ -1,4 +1,4 @@
-# *-* coding :utf-8 -*-
+# -*- coding:utf-8 -*-
 # by melon_rind_cat
 #
 
@@ -8,6 +8,7 @@ import os
 import re
 import random
 import sys
+import msvcrt
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -15,7 +16,7 @@ sys.setdefaultencoding('utf-8')
 se = requests.session()
 
 class Pixiv():
-    def __int__(self):
+    def __init__(self):
         self.base_url = 'https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index'
         self.login_url = 'https://accounts.pixiv.net/api/login?lang=zh'
         self.mark_url = 'https://www.pixiv.net/bookmark.php?rest=show&p='
@@ -48,7 +49,7 @@ class Pixiv():
 
     #获取url的页面
     def get_html(self,url):
-        return se.get(url=url,header=self.header)
+        return se.get(url=url,headers=self.headers)
 
 
     #获取收藏页中的图片信息,返回图片链接和是否为多图
@@ -58,11 +59,11 @@ class Pixiv():
         #获取当前收藏页中所有图片信息
         Elements = {}
         for items in section_list:
-            Pic_url = self.main_url + items.find('a')['href']
+            Img_url = self.main_url + items.find('a')['href']
             if 'multiple' in items.find('a')['class']:
-                Elements[Pic_url] = 1
+                Elements[Img_url] = 1
             else:
-                Elements[Pic_url] = 0
+                Elements[Img_url] = 0
         return Elements
         #返回一个元素
 
@@ -72,10 +73,11 @@ class Pixiv():
         #获取收藏页面的源代码
         Pattern = re.compile('<span class="count-badge">(.*?)件</span>',re.S)
         #comlile的正则匹配，re.S为完全匹配，返回一个对象模式
-        Total = re.search(pattern = Pattern,string = Mark_HtmlSource).group(1)
+        Total = re.search(pattern = Pattern,string = Mark_HtmlSource)
         #search调用compile的规则查找，group(1)为匹配到的第一个字符
-        print u'一共有' + str(Total) + u'件收藏'
-        return Total
+        print u'一共有' + str(Total.group[1]) + u'件收藏'
+        a = input('go')
+        return Total.group[1]
 
     #获取图片主页的信息
     def get_Img_info(self,url,flag):
@@ -90,7 +92,7 @@ class Pixiv():
             Img_info = Img_soup.find('div',attrs={'id':'wrapper'}).find('div',attrs={'class':'wrapper'})
             flag = self.download_Img(Img_info,url,Img_id)
             if not flag:
-                print u'该图片已存在'
+                print '[-]id='+str(Img_id)+u'保存失败'
                 return 2
             else:
                 return 1
@@ -107,7 +109,7 @@ class Pixiv():
             print u'图片地址获取失败'
             return False
         try:
-            html = requests.get(src,header=src_headers)
+            html = requests.get(src,headers=src_headers)
             Img_data = html.content
         except:
             print u'图片获取失败'
@@ -119,48 +121,60 @@ class Pixiv():
         if not is_exists :
             with open(title,'ab') as f:
                 f.write(Img_data)
-            print u'图片保存成功'
+            print '[+]id='+str(Img_id)+u'保存成功'
             return 1
         if is_exists:
             return 0
-        
+
 
 
     def mkdir(self):
         self.path = self.path.strip()
         is_exist = os.path.exists(path=self.path)
         if not is_exist:
-            print u'创建一个名字为 ' + path + ' 的文件夹'
+            print u'创建一个名字为 ' + path + u' 的文件夹'
             os.makedirs(self.path)
             os.chdir(self.path)
             return False
         else:
-            print u'名字为 ' + path + ' 的文件夹已经存在'
+            print u'名字为 ' + path + u' 的文件夹已经存在'
             os.chdir(self.path)
             return False
 
 
     def work(self):
-        self.login(self)
-        Mark_Total = self.get_total(self)
+        self.login()
+        print u'登录成功'
+        # input('fuck')
+        raw_input('fuck')
+        Mark_Total = self.get_total()
         Mark_page_num = int(Mark_Total)/20
         #求出收藏页数
+        print Mark_page_num
+        a = input('page scc')
+
         self.mkdir(self.path)
+        a = input('mkdir scc')
 
-        for page_num in Mark_page_num:
-            Elements = self.get_html(self,self.mark_url)
+
+        for page_num in range(1,Mark_page_num + 1):
+            Elements = self.get_mark_items(self,self.mark_url + str(page_num))
             for Img_url,flag  in Elements.items():
+                print Img_url
+                print flag
+                a = input(gogogogo)
                 flag = self.get_Img_info(Img_url,flag)
-                if flag == 2:
-                    break
-                    break
+                # if flag == 2:
+                #     break
+                #     break
 
-
+        print u'全部图片保存完毕'
 
 def main():
     pixiv = Pixiv()
-    pixiv.pixiv_id=input('输入pixiv 账号：')
-    pixiv.password=input('输入密码：')
+    # pixiv.pixiv_id=raw_input(u'输入pixiv 账号：')
+    # pixiv.password=raw_input(u'输入密码：')
+
     pixiv.work()
 
 
