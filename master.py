@@ -8,6 +8,7 @@ import os
 import re
 import random
 import sys
+import time
 import msvcrt
 
 reload(sys)
@@ -48,8 +49,20 @@ class Pixiv():
         se.post(self.login_url,data=data,headers=self.headers)
 
     #获取url的页面
-    def get_html(self,url):
-        return se.get(url=url,headers=self.headers)
+    def get_html(self,url,proxy = None,num_entries = 5):
+
+        if proxy is None:
+            try:
+                return se.get(url,headers = self.headers)
+            except:
+                if num_entries>0:
+                    print u'网页获取失败，5秒后尝试重连，剩余次数 '+str(num_entries)
+                    time.sleep(5)
+                    return self.get_html(url,num_entries = num_entries-1)
+                else:
+                    print u'该网页无法连接'
+
+
 
 
     #获取收藏页中的图片信息,返回图片链接和是否为多图
@@ -71,7 +84,7 @@ class Pixiv():
     #获取收藏图片数量
     def get_total(self):
         Mark_HtmlSource = str(se.get(url=self.mark_url).text)
-        print Mark_HtmlSource
+        # print Mark_HtmlSource
         #获取收藏页面的源代码
         Pattern = re.compile('<span class="count-badge">(.*?)件</span>',re.S)
         #comlile的正则匹配，re.S为完全匹配，返回一个对象模式
@@ -90,8 +103,10 @@ class Pixiv():
             Img_soup = BeautifulSoup(Img_html,'lxml')
             Pattern = re.compile('illust_id=(.*?)$',re.S)
             Img_id = re.search(pattern=Pattern, string=url).group(1)
+            #获取url中的图片id
 
             Img_info = Img_soup.find('div',attrs={'id':'wrapper'}).find('div',attrs={'class':'wrapper'})
+
             flag = self.download_Img(Img_info,Img_id,url)
             if not flag:
                 print '[-]id='+str(Img_id)+u'保存失败'
@@ -110,23 +125,29 @@ class Pixiv():
         except:
             print u'图片地址获取失败'
             return False
-        try:
-            html = requests.get(src,headers=src_headers)
-            Img_data = html.content
-        except:
-            print u'图片获取失败'
-            return False
         title = title.replace('?', '_').replace('/', '_').replace('\\', '_').replace('*', '_').replace('|', '_') \
             .replace('>', '_').replace('<', '_').replace(':', '_').replace('"', '_').strip()
-        title = title + ' -' + str(Img_id) +'.jpg'
+        title = title + ' -' + str(Img_id) + '.jpg'
         is_exists = os.path.exists(path=self.path + '/' + title)
+
         if not is_exists :
+            try:
+                time.sleep(3)
+                html = requests.get(src, headers=src_headers)
+                Img_data = html.content
+            except:
+                print u'图片获取失败'
+                return False
             with open(title,'ab') as f:
                 f.write(Img_data)
             print '[+]id = '+str(Img_id)+u' 保存成功'
             return 1
         if is_exists:
             return 0
+
+
+
+
 
 
 
@@ -152,7 +173,7 @@ class Pixiv():
         Mark_page_num = 10
 
         Mark_Total = self.get_total()
-        Mark_page_num = int(Mark_Total)/20
+        Mark_page_num = int(Mark_Total)/20 +1
         #求出收藏页数
 
         print Mark_page_num
@@ -166,8 +187,8 @@ class Pixiv():
             Mark_page_html = self.mark_url + str(page_num)
             Elements = self.get_mark_items(Mark_page_html)
             for Img_url,flag  in Elements.items():
-                print Img_url
-                print flag
+                # print Img_url
+                # print flag
                 # raw_input('123')
                 flag = self.get_Img_info(Img_url,flag)
                 # if flag == 2:
